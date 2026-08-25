@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<title>Notes Keeper</title>
+<meta name="description" content="A premium, private space to capture and organize your notes." />
+
+<!-- Home-screen / standalone mode: without these, iOS Safari can open the
+     app with a stale zoom/scroll position from a previous tab, which also
+     makes the sticky header render as if it were cut off. -->
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Notes Keeper" />
+
+<!-- Favicon -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png" />
+<link rel="icon" type="image/x-icon" href="favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<meta name="msapplication-TileColor" content="#da532c" />
+<meta name="theme-color" content="#0a0b0d" />
+
+<!-- Fonts: Fraunces (display) + Inter (body) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css" />
+
+<!-- iOS Safari can restore a reloaded/back-forward-cached page at a stale
+     pinch-zoom or scroll position, which makes the sticky header look
+     clipped/zoomed until the user manually pinches back out. This forces
+     the viewport back to the top-left on restore so it matches the
+     initial-scale set above. -->
+<script>
+  window.addEventListener("pageshow", function (e) {
+    var nav = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+    if (e.persisted || (nav && nav.type === "back_forward")) {
+      window.scrollTo(0, 0);
+    }
+  });
+</script>
+</head>
+<body>
+
+<!-- ===================== Guest / Anonymous banner ===================== -->
+<div id="guestBanner" class="guest-banner" hidden>
+  <span class="guest-banner__text">
+    <strong>You're browsing as a guest.</strong>
+    Your notes are only on this device & delete after 30 days — sign in to keep them safe long-term.
+  </span>
+  <button class="guest-banner__cta" id="guestBannerCta">Sign in / Sign up</button>
+  <button class="guest-banner__dismiss" id="guestBannerDismiss" aria-label="Dismiss">&times;</button>
+</div>
+
+<div class="app-shell">
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- ============================= Sidebar ============================ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand__mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"> <rect width="512" height="512" rx="96" fill="#e8b563"/> <path d="M174 112 H304 L374 182 V390 C374 413 355 432 332 432 H174 C151 432 132 413 132 390 V154 C132 131 151 112 174 112Z" fill="#fff"/> <path d="M304 112 V154 C304 170 316 182 332 182 H374 Z" fill="#f4dfba"/> <rect x="104" y="168" width="58" height="24" rx="12" fill="#fff"/> <rect x="104" y="232" width="58" height="24" rx="12" fill="#fff"/> <rect x="104" y="296" width="58" height="24" rx="12" fill="#fff"/> <rect x="104" y="360" width="58" height="24" rx="12" fill="#fff"/> <rect x="202" y="224" width="122" height="12" rx="6" fill="#e8b563"/> <rect x="202" y="276" width="122" height="12" rx="6" fill="#e8b563"/> <rect x="202" y="328" width="122" height="12" rx="6" fill="#e8b563"/> </svg></span>
+      <span class="brand__name">Notes&nbsp;Keeper</span>
+    </div>
+
+    <nav class="nav" id="nav">
+      <button class="nav__item is-active" data-view="all">
+        <span class="nav__icon" data-icon="notes"></span> All Notes
+      </button>
+      <button class="nav__item" data-view="archived">
+        <span class="nav__icon" data-icon="archive"></span> Archive
+      </button>
+      <button class="nav__item" data-view="hidden">
+        <span class="nav__icon" data-icon="lock"></span> Hidden
+      </button>
+      <button class="nav__item" data-view="trash">
+        <span class="nav__icon" data-icon="trash"></span> Trash
+      </button>
+    </nav>
+
+    <div class="sidebar__footer">
+      <button class="sidebar__export" id="exportAllBtn">
+        <span class="nav__icon" data-icon="download"></span> Export all notes
+      </button>
+      <div class="account-card" id="accountCard">
+        <div class="account-card__avatar" id="accountAvatar">?</div>
+        <div class="account-card__info">
+          <div class="account-card__name" id="accountName">Guest</div>
+          <div class="account-card__status" id="accountStatus">Not signed in</div>
+        </div>
+        <button class="account-card__menu-btn" id="accountMenuBtn" aria-label="Account menu">&#8942;</button>
+        <div class="account-menu" id="accountMenu" hidden>
+          <button id="accountSignInBtn">Sign in / Sign up</button>
+          <button id="accountSettingsBtn" hidden>Account settings</button>
+          <button id="accountSignOutBtn" hidden>Sign out</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============================ Main column ========================== -->
+  <div class="main-col">
+
+    <!-- ------------------------------ Topbar ---------------------------- -->
+    <header class="topbar">
+      <button class="icon-btn sidebar-toggle" id="sidebarToggle" aria-label="Toggle menu">
+        <span data-icon="menu"></span>
+      </button>
+
+      <div class="search-bar">
+        <span data-icon="search" class="search-bar__icon"></span>
+        <input type="text" id="searchInput" placeholder="Search your notes..." autocomplete="off" />
+        <button class="search-bar__clear" id="searchClear" hidden aria-label="Clear search">&times;</button>
+      </div>
+
+      <div class="topbar__actions">
+        <button class="icon-btn" id="layoutToggle" title="Toggle grid / list view">
+          <span data-icon="grid"></span>
+        </button>
+        <button class="icon-btn" id="themeToggle" title="Toggle dark / light theme">
+          <span data-icon="moon"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ------------------------------ Content ---------------------------- -->
+    <main class="content">
+
+      <!-- Quick-compose box (only visible on the "All notes" view) -->
+      <section class="composer" id="composer">
+        <div class="composer__collapsed" id="composerCollapsed">
+          <span data-icon="plus" class="composer__plus"></span>
+          <span>Take a note...</span>
+        </div>
+        <form class="composer__expanded" id="composerExpanded" hidden>
+          <input type="text" id="composerTitle" class="composer__title" placeholder="Title" />
+          <textarea id="composerContent" class="composer__content" placeholder="Take a note... (Markdown supported)" rows="3"></textarea>
+          <div class="composer__row">
+            <div class="color-swatches" id="composerColors"></div>
+            <div class="composer__buttons">
+              <span class="save-indicator" id="composerSaveIndicator"></span>
+              <button type="button" class="btn btn--ghost" id="composerCancel">Close</button>
+              <button type="submit" class="btn btn--primary" id="composerSave">Save</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <h2 class="section-title" id="viewTitle">All Notes</h2>
+
+      <!-- Pinned / Others sub-sections for the "all" view -->
+      <div id="pinnedWrap" hidden>
+        <h3 class="section-subtitle">Pinned</h3>
+        <div class="notes-grid" id="pinnedGrid"></div>
+        <h3 class="section-subtitle">Others</h3>
+      </div>
+
+      <div class="notes-grid" id="notesGrid"></div>
+
+      <!-- Empty states -->
+      <div class="empty-state" id="emptyState" hidden>
+        <div class="empty-state__icon" id="emptyStateIcon"></div>
+        <h3 id="emptyStateTitle">Nothing here yet</h3>
+        <p id="emptyStateText">Notes you create will show up here.</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ============================ Note editor modal ========================= -->
+<div class="modal-overlay" id="noteModalOverlay" hidden>
+  <div class="modal note-modal" id="noteModal" role="dialog" aria-modal="true">
+    <div class="note-modal__header">
+      <input type="text" id="modalTitle" class="note-modal__title" placeholder="Title" />
+      <span class="save-indicator" id="modalSaveIndicator"></span>
+      <button class="icon-btn" id="noteModalClose" aria-label="Close">
+        <span data-icon="close"></span>
+      </button>
+    </div>
+
+    <div class="note-modal__toolbar">
+      <button class="icon-btn" id="modalMarkdownToggle" title="Toggle markdown preview">
+        <span data-icon="markdown"></span>
+      </button>
+      <span class="note-modal__meta" id="modalMeta"></span>
+    </div>
+
+    <textarea id="modalContent" class="note-modal__content" placeholder="Take a note... (Markdown supported)"></textarea>
+    <div id="modalPreview" class="note-modal__preview markdown-body" hidden></div>
+
+    <div class="note-modal__colors" id="modalColors"></div>
+
+    <div class="note-modal__actions">
+      <button class="icon-btn" id="modalPin" title="Pin"><span data-icon="pin"></span></button>
+      <button class="icon-btn" id="modalArchive" title="Archive"><span data-icon="archive"></span></button>
+      <button class="icon-btn" id="modalLock" title="Lock note"><span data-icon="lock"></span></button>
+      <button class="icon-btn" id="modalExport" title="Export note"><span data-icon="download"></span></button>
+      <button class="icon-btn icon-btn--danger" id="modalDelete" title="Delete"><span data-icon="trash"></span></button>
+      <span class="note-modal__spacer"></span>
+      <button class="icon-btn" id="modalRestore" title="Restore" hidden><span data-icon="restore"></span></button>
+      <button class="icon-btn icon-btn--danger" id="modalDeleteForever" title="Delete forever" hidden><span data-icon="trash"></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ Auth modal ========================= -->
+<div class="modal-overlay" id="authModalOverlay" hidden>
+  <div class="modal auth-modal" role="dialog" aria-modal="true">
+    <button class="icon-btn modal-close-x" id="authModalClose" aria-label="Close"><span data-icon="close"></span></button>
+    <div class="auth-modal__tabs">
+      <button class="auth-modal__tab is-active" data-tab="login">Sign in</button>
+      <button class="auth-modal__tab" data-tab="signup">Create account</button>
+    </div>
+
+    <form id="loginForm" class="auth-form">
+      <label>Email <input type="email" id="loginEmail" required autocomplete="email" /></label>
+      <label>Password <input type="password" id="loginPassword" required autocomplete="current-password" /></label>
+      <button type="button" class="auth-form__link" id="forgotPasswordLink">Forgot password?</button>
+      <p class="auth-form__error" id="loginError" hidden></p>
+      <button type="submit" class="btn btn--primary btn--block">Sign in</button>
+    </form>
+
+    <form id="signupForm" class="auth-form" hidden>
+      <label>Name <input type="text" id="signupName" autocomplete="name" /></label>
+      <label>Email <input type="email" id="signupEmail" required autocomplete="email" /></label>
+      <label>Password <input type="password" id="signupPassword" required minlength="6" autocomplete="new-password" /></label>
+      <p class="auth-form__error" id="signupError" hidden></p>
+      <button type="submit" class="btn btn--primary btn--block">Create account</button>
+    </form>
+
+    <form id="forgotForm" class="auth-form" hidden>
+      <p class="modal-subtext">Enter your account email and we'll send you a link to reset your password.</p>
+      <label>Email <input type="email" id="forgotEmail" required autocomplete="email" /></label>
+      <p class="auth-form__error" id="forgotError" hidden></p>
+      <p class="auth-form__success" id="forgotSuccess" hidden></p>
+      <button type="submit" class="btn btn--primary btn--block">Send reset link</button>
+      <button type="button" class="auth-form__link" id="backToLoginLink">&larr; Back to sign in</button>
+    </form>
+
+    <div class="auth-modal__divider" id="authDivider"><span>or</span></div>
+    <button class="btn btn--google btn--block" id="googleSignInBtn">
+      <span data-icon="google"></span> Continue with Google
+    </button>
+  </div>
+</div>
+
+<!-- ========================= Account settings modal ======================== -->
+<div class="modal-overlay" id="accountSettingsOverlay" hidden>
+  <div class="modal small-modal" role="dialog" aria-modal="true">
+    <h3>Account settings</h3>
+
+    <div class="settings-section">
+      <label>Email
+        <input type="text" id="settingsEmailInput" disabled readonly />
+      </label>
+      <label>Display name
+        <input type="text" id="settingsNameInput" placeholder="Your name" />
+      </label>
+      <p class="auth-form__error" id="settingsNameError" hidden></p>
+      <button class="btn btn--ghost" id="settingsNameSaveBtn">Save name</button>
+    </div>
+
+    <div class="settings-section" id="settingsPasswordSection">
+      <h4>Change password</h4>
+      <label>Current password <input type="password" id="settingsCurrentPassword" autocomplete="current-password" /></label>
+      <label>New password <input type="password" id="settingsNewPassword" minlength="6" autocomplete="new-password" /></label>
+      <p class="auth-form__error" id="settingsPasswordError" hidden></p>
+      <button class="btn btn--ghost" id="settingsPasswordSaveBtn">Update password</button>
+    </div>
+    <p class="modal-subtext" id="settingsGoogleNote" hidden>You signed in with Google, so there's no password to change here.</p>
+
+    <div class="modal-actions">
+      <button class="btn btn--ghost" id="settingsCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== Password set / prompt modals ==================== -->
+<div class="modal-overlay" id="passwordSetOverlay" hidden>
+  <div class="modal small-modal" role="dialog" aria-modal="true">
+    <h3>Lock this note</h3>
+    <p class="modal-subtext">Set a password so only you can view or edit this note.</p>
+    <label>Password <input type="password" id="lockPasswordInput" minlength="4" /></label>
+    <label>Hint (optional) <input type="text" id="lockHintInput" placeholder="Something to remind yourself" /></label>
+    <p class="auth-form__error" id="lockError" hidden></p>
+    <div class="modal-actions">
+      <button class="btn btn--ghost" id="lockCancelBtn">Cancel</button>
+      <button class="btn btn--primary" id="lockConfirmBtn">Lock note</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="passwordPromptOverlay" hidden>
+  <div class="modal small-modal" role="dialog" aria-modal="true">
+    <h3>Enter password</h3>
+    <p class="modal-subtext" id="unlockHintText">This note is protected.</p>
+    <label>Password <input type="password" id="unlockPasswordInput" /></label>
+    <p class="auth-form__error" id="unlockError" hidden></p>
+    <div class="modal-actions">
+      <button class="btn btn--ghost" id="unlockCancelBtn">Cancel</button>
+      <button class="btn btn--primary" id="unlockConfirmBtn">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ Confirm dialog ========================= -->
+<div class="modal-overlay" id="confirmOverlay" hidden>
+  <div class="modal small-modal" role="dialog" aria-modal="true">
+    <h3 id="confirmTitle">Are you sure?</h3>
+    <p class="modal-subtext" id="confirmText"></p>
+    <div class="modal-actions">
+      <button class="btn btn--ghost" id="confirmCancelBtn">Cancel</button>
+      <button class="btn btn--danger" id="confirmOkBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================ Toasts ============================== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
